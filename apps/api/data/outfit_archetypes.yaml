@@ -1,0 +1,54 @@
+archetypes:
+  - id: beige_linen_trousers
+    name: Beige linen trousers
+    category: bottom
+    style: relaxed
+    color: "#E5E7EB"
+    suitability: 0.9
+    occasions: [college, work]
+    virtual_item:
+      id: virtual_beige_linen_trousers
+      category: bottom
+      style: relaxed
+      color: "#E5E7EB"
+      formality: 1
+      season: summer
+      seasons: [summer, all_season]
+      occasions: [college, work]
+      is_available: true
+
+  - id: white_sneakers
+    name: White sneakers
+    category: shoes
+    style: casual
+    color: "#FFFFFF"
+    suitability: 0.7
+    occasions: [casual, college]
+    virtual_item:
+      id: virtual_white_sneakers
+      category: shoes
+      style: casual
+      color: "#FFFFFF"
+      formality: 1
+      season: all_season
+      seasons: [all_season]
+      occasions: [casual, college]
+      is_available: true
+
+  - id: black_kurta
+    name: Black kurta
+    category: top
+    style: minimal
+    color: "#111827"
+    suitability: 0.8
+    occasions: [festive, work]
+    virtual_item:
+      id: virtual_black_kurta
+      category: top
+      style: minimal
+      color: "#111827"
+      formality: 2
+      season: all_season
+      seasons: [all_season]
+      occasions: [festive, work]
+      is_available: true

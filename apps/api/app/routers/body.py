@@ -70,6 +70,7 @@ class BodyGuidanceResponse(BaseModel):
     suggested_fits: list[str]
     styles_to_try: list[str]
     notes: str
+    recommendations: list[str] = Field(default_factory=list)
     source: str
     user_corrected_shape: str | None = None
 
@@ -93,6 +94,7 @@ async def submit_manual_measurements(
         bust=body.bust,
         height=body.height,
         inseam=body.inseam,
+        source="manual",
     )
 
     measurements_dict = body.model_dump()
@@ -133,6 +135,7 @@ async def submit_manual_measurements(
         suggested_fits=guidance["suggested_fits"],
         styles_to_try=guidance["styles_to_try"],
         notes=guidance["notes"],
+        recommendations=guidance.get("recommendations", []),
         source=profile.source.value if profile.source else "manual",
         user_corrected_shape=profile.user_corrected_shape,
     )
@@ -177,6 +180,7 @@ async def analyze_visual_body(
         shoulder=proportions["shoulder"],
         waist=proportions["waist"],
         hip=proportions["hip"],
+        source="photo",
     )
 
     measurements_enc = encrypt_measurements(proportions)
@@ -232,6 +236,7 @@ async def analyze_visual_body(
         suggested_fits=guidance["suggested_fits"],
         styles_to_try=guidance["styles_to_try"],
         notes=guidance["notes"],
+        recommendations=guidance.get("recommendations", []),
         source=profile.source.value if profile.source else "photo",
         user_corrected_shape=profile.user_corrected_shape,
     )

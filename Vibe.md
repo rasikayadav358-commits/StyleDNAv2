@@ -1,82 +1,13 @@
-# StyleSenseAI — Project Status, Implementation Log & Roadmap (Vibe.md)
+# StyleSenseAI — status pointer
 
-> **Document Purpose:** Complete executive and technical status report for **StyleSenseAI**, synchronizing [CLAUDE.md](file:///Users/inshrakhan/sih/stylesense/CLAUDE.md), [PLAN.md](file:///Users/inshrakhan/sih/stylesense/PLAN.md), [docs/PROGRESS.md](file:///Users/inshrakhan/sih/stylesense/docs/PROGRESS.md), and the active codebase. Details what is implemented, verified, and the sequential roadmap for upcoming phases.
+This file is intentionally stale.
+Use docs/PROGRESS.md for the active project tracker.
+Use docs/phases/00-overview.md for the current architecture and repo defaults.
+Use the numbered phase files for the execution plan.
 
----
-
-## 1. Executive Summary & Product Vision
-
-**StyleSenseAI** is an AI-powered personal stylist and wardrobe intelligence platform. It digitizes a user's physical wardrobe from photos and videos, understands body proportions and personal style preferences, generates scored and explainable outfits from existing clothes, identifies **wardrobe gaps** (items that unlock the highest number of new outfits), and suggests matching products from an offline simulated catalog or live shopping APIs. 
-
-The core ML engine **learns continuously from user interactions** (likes, dislikes, saves, wears, skips) using real-time Style DNA embeddings and offline ranker retraining, while maintaining strict privacy-by-design standards (sensitive body media is encrypted, face-blurred, and deleted after landmark extraction).
-
-### Core Philosophy & Non-Negotiables ([CLAUDE.md](file:///Users/inshrakhan/sih/stylesense/CLAUDE.md))
-- **Offline & Zero-Key Operation:** The entire application runs without external API keys or an internet connection using local and mock providers (`LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`, `CLASSIFIER_PROVIDER=local`, `SUGGESTION_PROVIDER=local`, `STORAGE_PROVIDER=localfs`).
-- **Privacy by Design:** Body images and measurements are encrypted at rest with envelope encryption (AES-256-GCM). Faces are blurred by default, and raw body media is purged after landmark extraction.
-- **Strict Authorization & IDOR Immunity:** Every query on user-owned assets explicitly filters by `user_id`. No endpoint accepts bare object IDs without ownership verification.
-- **No Retailer Scraping:** Product recommendations link to search queries or permitted APIs; scraping is forbidden.
-- **Body-Positive Guidance:** Proportions output styling suggestions (fits, silhouettes, cuts), never evaluative judgments, BMI, weight, or attractiveness ratings.
-
----
-
-## 2. What Has Been Implemented So Far
-
-The project has strictly executed **Phase 0 (Bootstrap)** and **Phase 1 (Auth & Security Baseline)** in vertical slices, establishing the foundational architecture and passing all security and integration tests.
-
-### Phase 0 — Bootstrap [P0] ✅
-- **Repository Architecture:** Clean monorepo structure adhering to [PLAN.md §2](file:///Users/inshrakhan/sih/stylesense/PLAN.md#L41-L71) (`apps/api` FastAPI backend, `apps/web` Next.js frontend skeleton, `docs/` architecture logs).
-- **Container Infrastructure:** [docker-compose.yml](file:///Users/inshrakhan/sih/stylesense/docker-compose.yml) specifying:
-  - `api` (FastAPI backend service)
-  - `worker` (Arq background task processor)
-  - `postgres` (PostgreSQL with `pgvector` extension for ANN embeddings)
-  - `redis` (Task queuing and rate limiting)
-  - `minio` (S3-compatible local object storage)
-  - `clamav` (Optional antivirus profile for media scanning)
-- **Environment & Configuration:** [.env.example](file:///Users/inshrakhan/sih/stylesense/.env.example) with zero committed secrets and configurable provider toggles; validated via [app/config.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/config.py) using Pydantic Settings.
-- **Developer Automation:** [Makefile](file:///Users/inshrakhan/sih/stylesense/Makefile) targets (`up`, `down`, `migrate`, `seed`, `demo`, `test`, `lint`, `fmt`).
-- **Health & Readiness Checks:** `/healthz` and `/readyz` endpoints configured in [app/main.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/main.py#L178-L188).
-- **Structured Logging:** [app/core/logging.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/core/logging.py) providing JSON-formatted logs with automatic request ID injection (`X-Request-ID`) and regex-based PII redaction for passwords, tokens, API keys, and email addresses.
-- **Architecture Documentation:** [docs/DECISIONS.md](file:///Users/inshrakhan/sih/stylesense/docs/DECISIONS.md) documenting decisions D001 through D005 (PostgreSQL+pgvector, argon2id auth, provider pattern, SQLite for fast unit tests, INR/India-first categories).
-
----
-
-### Phase 1 — Auth & Security Baseline [P0] ✅
-- **Comprehensive Database Schema:** [app/db/models/models.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/db/models/models.py) implementing all 17 tables from [PLAN.md §3](file:///Users/inshrakhan/sih/stylesense/PLAN.md#L72-L93) with UUID primary keys, timestamps, pgvector columns, and foreign keys:
-  - `users`, `refresh_tokens`, `consents`, `profiles`, `body_profiles`, `media_assets`, `wardrobe_items`, `item_label_corrections`, `outfits`, `outfit_items`, `outfit_events`, `user_style_state`, `catalog_products`, `wishlist_items`, `trends`, `model_versions`, `audit_log`.
-- **Identity & Password Security:**
-  - Password hashing with **Argon2id** via [app/core/security.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/core/security.py).
-  - Validation: Minimum length of 10 characters, upper/lower/digit requirements, and rejection of common passwords from an embedded blocklist.
-  - Constant-time password comparisons and generic error messages preventing user enumeration.
-- **JWT & Token Lifecycle Management:**
-  - Short-lived Access Tokens (15 minutes, HS256) signed with configurable secret.
-  - Cryptographically secure 256-bit Refresh Tokens stored as SHA-256 hashes.
-  - Refresh token rotation with **family-wide reuse detection** (`family_id`): if an already-used or revoked refresh token is presented, all tokens in the entire family are immediately invalidated.
-  - Delivered via `httpOnly`, `Secure`, `SameSite=Strict` cookies.
-- **Rate Limiting Engine:** [app/core/rate_limit.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/core/rate_limit.py) implementing sliding-window rate limiting with Redis support for production and an in-memory fallback for local development and testing.
-- **Security Middleware & HTTP Hardening:** In [app/main.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/main.py):
-  - Strict CORS allow-listing with `allow_credentials=True`.
-  - Security headers: CSP (`Content-Security-Policy`), HSTS (`Strict-Transport-Security`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, and `Permissions-Policy`.
-  - Request body size limits (10 MB default) to prevent memory exhaustion attacks.
-  - `Cache-Control: no-store` enforced on sensitive endpoints (`/auth`, `/me`, `/body`).
-- **Authorization & Scoping:** [app/deps.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/deps.py) `get_current_user` dependency ensuring all queries filter strictly by `user_id`, guaranteeing cross-tenant isolation.
-- **Consent Architecture:** [app/routers/consents.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/routers/consents.py) managing user opt-ins for `body_media`, `third_party_ai`, and `analytics`.
-- **Audit Logging:** [app/core/audit.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/core/audit.py) logging authentication and profile actions with hashed IP and User-Agent metadata.
-- **Envelope Encryption Core:** [app/core/crypto.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/core/crypto.py) providing AES-256-GCM envelope encryption (data encryption key generation, master key wrapping, ciphertext unpacking) for sensitive body data.
-- **Routers Implemented:**
-  - `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/logout` ([app/routers/auth.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/routers/auth.py))
-  - `GET /api/v1/me`, `PATCH /api/v1/me/password` ([app/routers/me.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/routers/me.py))
-  - `GET /api/v1/profile`, `PATCH /api/v1/profile` ([app/routers/profile.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/routers/profile.py))
-  - `GET /api/v1/consents`, `POST /api/v1/consents` ([app/routers/consents.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/routers/consents.py))
-- **Provider Interfaces:**
-  - Base storage interface ([app/services/storage/base.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/services/storage/base.py)) with presigned URLs and envelope encryption support.
-  - Base LLM client interface ([app/services/llm/base.py](file:///Users/inshrakhan/sih/stylesense/apps/api/app/services/llm/base.py)) for structured JSON generation and vision input.
-
-### Verified Test Suite
-Running `pytest` in `apps/api` validates 32 automated tests passing in 1.95s:
-- **Auth & Security ([apps/api/tests/security/test_auth.py](file:///Users/inshrakhan/sih/stylesense/apps/api/tests/security/test_auth.py)):** 17 tests covering registration, login, JWT lifecycle, argon2id hashing, lockout, headers, and IDOR isolation.
-- **Media Pipeline ([apps/api/tests/security/test_media.py](file:///Users/inshrakhan/sih/stylesense/apps/api/tests/security/test_media.py)):** 7 tests covering magic bytes validation, executable rejection, EXIF metadata stripping, body media envelope encryption, oversize rejection, IDOR access protection, and account deletion media purges.
-- **Wardrobe AI ([apps/api/tests/unit/test_wardrobe.py](file:///Users/inshrakhan/sih/stylesense/apps/api/tests/unit/test_wardrobe.py)):** 3 tests covering CIE Lab dominant color extraction, garment cutout and digitization, active learning corrections logging, wear tracking, and IDOR isolation.
-- **Body Analysis ([apps/api/tests/unit/test_body.py](file:///Users/inshrakhan/sih/stylesense/apps/api/tests/unit/test_body.py)):** 5 tests covering canonical measurement sets for all 5 shapes (Hourglass, Pear, Inverted Triangle, Rectangle, Apple), borderline runner-up detection, measurement encryption, visual photo analysis, privacy purge of raw body media, and IDOR isolation.
+Source of truth: [docs/PROGRESS.md](docs/PROGRESS.md)
+Plan overview: [docs/phases/00-overview.md](docs/phases/00-overview.md)
+Current phase: [docs/phases](docs/phases)
 
 ---
 

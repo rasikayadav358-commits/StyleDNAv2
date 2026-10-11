@@ -6,10 +6,22 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.ext.compiler import compiles
 
 # Import all models so Alembic can detect them
 from app.db.models.models import *  # noqa: F401, F403
 from app.db.session import Base
+
+
+@compiles(ARRAY, "sqlite")
+def compile_array_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "TEXT"
 
 config = context.config
 if config.config_file_name is not None:
@@ -26,13 +38,14 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
     with context.begin_transaction():
         context.run_migrations()
 
@@ -40,10 +53,12 @@ def do_run_migrations(connection):
 async def run_async_migrations() -> None:
     """Run migrations in 'online' mode with async engine."""
     configuration = config.get_section(config.config_ini_section, {})
-    # Use psycopg2 for migrations (sync driver)
+    # Use synchronous drivers for Alembic so migrations run reliably in tests and local SQLite development.
     url = configuration.get("sqlalchemy.url", "")
     if "+asyncpg" in url:
         configuration["sqlalchemy.url"] = url.replace("+asyncpg", "+psycopg2")
+    if "+aiosqlite" in url:
+        configuration["sqlalchemy.url"] = url.replace("+aiosqlite", "")
 
     from sqlalchemy import engine_from_config
     connectable = engine_from_config(
@@ -67,6 +82,9 @@ def run_async_migrations_sync():
     """Synchronous wrapper for async migrations."""
     # Use sync engine directly since Alembic doesn't need async
     configuration = config.get_section(config.config_ini_section, {})
+    url = configuration.get("sqlalchemy.url", "")
+    if "+aiosqlite" in url:
+        configuration["sqlalchemy.url"] = url.replace("+aiosqlite", "")
     from sqlalchemy import engine_from_config
     connectable = engine_from_config(
         configuration,

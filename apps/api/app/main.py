@@ -26,7 +26,7 @@ from app.db.session import close_db
 from app.deps import set_rate_limiter
 
 # Import routers
-from app.routers import auth, body, consents, me, media, profile, wardrobe
+from app.routers import auth, body, consents, gaps, me, media, outfits, profile, wardrobe
 
 logger = get_logger("main")
 
@@ -173,6 +173,8 @@ def create_app() -> FastAPI:
     app.include_router(me.router, prefix="/api/v1")
     app.include_router(media.router, prefix="/api/v1")
     app.include_router(wardrobe.router, prefix="/api/v1")
+    app.include_router(outfits.router, prefix="/api/v1")
+    app.include_router(gaps.router, prefix="/api/v1")
     app.include_router(body.router, prefix="/api/v1")
 
     # ── Health Checks ──

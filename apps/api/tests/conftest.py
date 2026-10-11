@@ -109,18 +109,23 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture
-async def auth_client(client: AsyncClient) -> AsyncClient:
-    """
-    An authenticated client — registers a test user and sets the access token.
-    """
-    email = f"test-{uuid.uuid4().hex[:8]}@example.com"
-    password = "TestPassword123!"
+async def auth_client() -> AsyncClient:
+    """An authenticated client with its own token scope for cross-user checks."""
+    app = create_app()
+    app.dependency_overrides[get_db] = override_get_db
 
-    response = await client.post(
-        "/api/v1/auth/register",
-        json={"email": email, "password": password, "name": "Test User"},
-    )
-    assert response.status_code == 201
-    token = response.json()["access_token"]
-    client.headers["Authorization"] = f"Bearer {token}"
-    return client
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as ac:
+        email = f"test-{uuid.uuid4().hex[:8]}@example.com"
+        password = "TestPassword123!"
+
+        response = await ac.post(
+            "/api/v1/auth/register",
+            json={"email": email, "password": password, "name": "Test User"},
+        )
+        assert response.status_code == 201
+        token = response.json()["access_token"]
+        ac.headers["Authorization"] = f"Bearer {token}"
+        yield ac

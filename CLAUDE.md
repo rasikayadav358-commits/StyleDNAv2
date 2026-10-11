@@ -1,6 +1,6 @@
 # CLAUDE.md — StyleSenseAI working rules
 
-Read `PLAN.md` first. It is the single source of truth for scope, architecture, data model, phases and acceptance criteria. If something is ambiguous, pick the most reasonable option, record it in `docs/DECISIONS.md`, and continue — do not stop to ask unless an action is destructive or irreversible.
+Read docs/phases/<current>.md only.
 
 ## How to work
 - Execute `PLAN.md` phase by phase, in order. Finish a phase's acceptance criteria (tests passing) before starting the next. Commit after each phase with a clear message.

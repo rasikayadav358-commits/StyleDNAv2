@@ -1,0 +1,36 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: bash -lc 'cd apps/api && python -m ruff check .'
+        language: system
+        files: ^apps/api/
+        pass_filenames: false
+
+      - id: black
+        name: black
+        entry: bash -lc 'cd apps/api && python -m black --check .'
+        language: system
+        files: ^apps/api/
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy
+        entry: bash -lc 'cd apps/api && python -m mypy app/ --ignore-missing-imports'
+        language: system
+        files: ^apps/api/app/
+        pass_filenames: false
+
+      - id: gitleaks
+        name: gitleaks
+        entry: bash -lc 'gitleaks detect --source . --no-banner --redact'
+        language: system
+        pass_filenames: false
+
+      - id: bandit
+        name: bandit
+        entry: bash -lc 'cd apps/api && python -m bandit -r app/ -c pyproject.toml'
+        language: system
+        files: ^apps/api/app/
+        pass_filenames: false

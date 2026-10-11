@@ -67,6 +67,7 @@
 - [x] Deterministic, bounded candidate skeletons for top/bottom/shoes, dress/shoes, and ethnic-set/shoes
 - [x] Optional layer, bag, and dupatta variants; unavailable and duplicate items excluded
 - [x] Unit tests cover skeleton validity, stable ordering, and candidate cap
+- [x] Outfit generation API and authenticated wardrobe route coverage for the initial slice
 - [ ] Occasion/formality/season hard filters, rule scoring, diversification, explanations, and API — TODO
 ## Phase 6 — Catalog & Gap Analysis 🔲
 ## Phase 7 — Learning System 🔲
